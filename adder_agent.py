@@ -22,9 +22,6 @@ MCP_SERVER_URL = "http://localhost:8000/sse"
 
 # Set Ollama environment variables
 os.environ["OLLAMA_API_BASE"] = "http://localhost:11434"
-# Alternatively, you can use OpenAI format:
-# os.environ["OPENAI_API_BASE"] = "http://localhost:11434/v1"
-# os.environ["OPENAI_API_KEY"] = "anything"
 
 async def init_mcp_tools():
     """Initialize connection to the MCP server and get tools."""
@@ -40,11 +37,11 @@ async def init_mcp_tools():
 
 # Define the agent
 def create_agent():
-    """Create an ADK agent that uses MCP tools with Llama 3.2 via Ollama."""
-    # Use LiteLlm wrapper with Ollama's Llama 3.2 model
+    """Create an ADK agent that uses MCP tools with Llama 3 via Ollama."""
+    # Use LiteLlm wrapper with Ollama's Llama 3 model
     agent = LlmAgent(
         name="calculator_agent",
-        # Use the ollama_chat provider to access Llama 3.2 in Ollama
+        # Use the ollama_chat provider to access Llama 3 in Ollama
         model=LiteLlm(model="ollama_chat/llama3"),
         description="An agent that can add two numbers using an MCP server.",
         instruction="""
@@ -112,15 +109,37 @@ async def main():
                 parts=[types.Part(text=user_input)]
             )
 
-            # Run the agent and collect the final response
+            # Track if we need to consume events
+            consumed_events = False
             final_response = None
+            tool_result = None
+
+            # Run the agent and process events
             async for event in runner.run_async(
                     user_id=user_id,
                     session_id=session_id,
                     new_message=user_content
             ):
-                if event.is_final_response() and event.content and event.content.parts:
-                    final_response = event.content.parts[0].text
+                # Once we've consumed events, we'll skip processing others to avoid repeat calls
+                if consumed_events:
+                    break
+
+                # Check for function response (tool result)
+                if event.content and event.content.parts:
+                    for part in event.content.parts:
+                        if hasattr(part, 'function_response') and part.function_response:
+                            print("Found function response")
+                            if 'result' in part.function_response.response:
+                                result = part.function_response.response['result']
+                                if hasattr(result, 'content') and result.content:
+                                    for content_part in result.content:
+                                        if hasattr(content_part, 'text') and content_part.text:
+                                            tool_result = content_part.text
+                                            print(f"Tool result: {tool_result}")
+
+                if tool_result:
+                    final_response = tool_result
+                    consumed_events = True
 
             if final_response:
                 print(f"Agent: {final_response}")
