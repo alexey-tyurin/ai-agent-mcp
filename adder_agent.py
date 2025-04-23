@@ -13,6 +13,9 @@ from google.adk.agents import Agent, LlmAgent
 from google.adk.models.lite_llm import LiteLlm
 from google.adk.tools.mcp_tool import MCPToolset
 from google.adk.tools.mcp_tool.mcp_toolset import SseServerParams
+from google.adk.runners import Runner
+from google.adk.sessions import InMemorySessionService
+from google.genai import types
 
 # MCP server URL (the server must be running)
 MCP_SERVER_URL = "http://localhost:8000/sse"
@@ -42,7 +45,7 @@ def create_agent():
     agent = LlmAgent(
         name="calculator_agent",
         # Use the ollama_chat provider to access Llama 3.2 in Ollama
-        model=LiteLlm(model="ollama_chat/llama3.2"),
+        model=LiteLlm(model="ollama_chat/llama3"),
         description="An agent that can add two numbers using an MCP server.",
         instruction="""
         You are a helpful assistant that can add numbers.
@@ -74,6 +77,26 @@ async def main():
         agent = create_agent()
         agent.tools = mcp_tools
 
+        # Create session service and runner
+        session_service = InMemorySessionService()
+        app_name = "calculator_app"
+        user_id = "user123"
+        session_id = "session456"
+
+        # Create session
+        session = session_service.create_session(
+            app_name=app_name,
+            user_id=user_id,
+            session_id=session_id
+        )
+
+        # Create runner for the agent
+        runner = Runner(
+            agent=agent,
+            app_name=app_name,
+            session_service=session_service
+        )
+
         print("Agent ready! Try asking it to add two numbers.")
         print("Type 'exit' to quit.")
 
@@ -83,9 +106,26 @@ async def main():
             if user_input.lower() == "exit":
                 break
 
-            # Process the request with the agent
-            response = await agent.process_async(user_input)
-            print(f"Agent: {response.text}")
+            # Process the request with the agent using runner
+            user_content = types.Content(
+                role='user',
+                parts=[types.Part(text=user_input)]
+            )
+
+            # Run the agent and collect the final response
+            final_response = None
+            async for event in runner.run_async(
+                    user_id=user_id,
+                    session_id=session_id,
+                    new_message=user_content
+            ):
+                if event.is_final_response() and event.content and event.content.parts:
+                    final_response = event.content.parts[0].text
+
+            if final_response:
+                print(f"Agent: {final_response}")
+            else:
+                print("Agent: No response received.")
 
     except Exception as e:
         print(f"Error occurred: {e}")
