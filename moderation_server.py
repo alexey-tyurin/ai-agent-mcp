@@ -86,7 +86,7 @@ class ModerationServer:
                 category_scores={"error": 1.0}
             )
     
-    def run(self, transport="sse", host="0.0.0.0", port=8000):
+    def run(self, transport="sse"):
         """Run the MCP server.
         
         Args:
@@ -94,8 +94,8 @@ class ModerationServer:
             host: Host to bind the server to
             port: Port to run the server on
         """
-        print(f"Starting Moderation MCP Server on {host}:{port}...")
-        self.mcp.run(transport=transport, host=host, port=port)
+        print(f"Starting Moderation MCP Server ...")
+        self.mcp.run(transport=transport)
 
 # Example to test the moderation directly (without MCP)
 def test_moderation():
