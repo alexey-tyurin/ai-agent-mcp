@@ -71,24 +71,29 @@ class ModerationTool:
                 "request_id": "req789"
             }
             
-            result = None
+            raw_result = None
             try:
-                result = await self.moderate_content_tool.run_async(
+                raw_result = await self.moderate_content_tool.run_async(
                     args=args,
                     tool_context=tool_context
                 )
-                print(f"Result from run_async: {result}")
+                print(f"Raw result type: {type(raw_result)}")
+                print(f"Raw result: {raw_result}")
+                
+                # Process the CallToolResult object
+                result = self.extract_result_data(raw_result)
+                
+                if result:
+                    print("Successfully extracted moderation result")
+                    print(f"Extracted result: {result}")
+                    return result
+                else:
+                    print("Failed to extract moderation result from the response")
             except Exception as tool_error:
                 print(f"Error calling run_async: {tool_error}")
                 traceback.print_exc()
-                result = None
             
-            # Check if we got a meaningful result
-            if result and isinstance(result, dict) and len(result) > 0:
-                print("Got a result from run_async, returning it")
-                return result
-            
-            # We couldn't get a result from the tool, so use our fallback
+            # If we're here, we couldn't get a valid result from the tool
             print("No useful result from tool, using simulated moderation")
             return self.simulate_moderation(content)
             
@@ -100,6 +105,78 @@ class ModerationTool:
             # As a fallback, we'll simulate moderation based on keywords
             print("Error occurred, using simulated moderation")
             return self.simulate_moderation(content)
+    
+    def extract_result_data(self, raw_result) -> Dict[str, Any]:
+        """Extract moderation data from the CallToolResult object.
+        
+        Args:
+            raw_result: The raw result from run_async
+            
+        Returns:
+            Extracted moderation result or None if extraction failed
+        """
+        try:
+            # First, check if raw_result is None
+            if raw_result is None:
+                return None
+                
+            # Check if it has a 'content' attribute
+            if hasattr(raw_result, 'content') and raw_result.content:
+                print("Found content attribute in result")
+                
+                # Access the first content item
+                if len(raw_result.content) > 0:
+                    content_item = raw_result.content[0]
+                    print(f"Content item type: {type(content_item)}")
+                    
+                    # Check if it has a 'text' attribute
+                    if hasattr(content_item, 'text') and content_item.text:
+                        print(f"Found text: {content_item.text}")
+                        
+                        # Try to parse the text as JSON
+                        try:
+                            import json
+                            json_data = json.loads(content_item.text)
+                            print("Successfully parsed JSON data")
+                            return json_data
+                        except json.JSONDecodeError:
+                            print("Text is not valid JSON, returning as is")
+                            return {"raw_text": content_item.text}
+            
+            # Check if it has a 'result' attribute
+            elif hasattr(raw_result, 'result'):
+                print("Found result attribute")
+                result_data = raw_result.result
+                
+                # If result is a dict, return it directly
+                if isinstance(result_data, dict):
+                    return result_data
+                    
+                # If result is a string, try to parse as JSON
+                elif isinstance(result_data, str):
+                    try:
+                        import json
+                        return json.loads(result_data)
+                    except:
+                        return {"raw_text": result_data}
+            
+            # Last resort: convert the entire object to a dict if possible
+            try:
+                if hasattr(raw_result, '__dict__'):
+                    return raw_result.__dict__
+                elif hasattr(raw_result, 'model_dump'):
+                    # For Pydantic models
+                    return raw_result.model_dump()
+            except:
+                pass
+                
+            # If all else fails, return None
+            return None
+            
+        except Exception as e:
+            print(f"Error extracting result data: {e}")
+            traceback.print_exc()
+            return None
     
     def simulate_moderation(self, text: str) -> Dict[str, Any]:
         """Simulate moderation based on simple keyword matching.
@@ -290,71 +367,33 @@ class ModerationAgent:
             print(f"Debug - Moderation result: {moderation_result}")
             
             # Check for errors in the moderation call
-            if "error_message" in moderation_result:
+            if moderation_result and isinstance(moderation_result, dict) and "error_message" in moderation_result:
                 print(f"Error in moderation: {moderation_result['error_message']}")
                 error_response = f"Sorry, I encountered an error when checking content moderation. Error: {moderation_result['error_message']}"
                 return error_response
             
-            # The MCP server might wrap the actual content moderation result in a specific format
-            # We'll try to find the flagged status and categories using different path checks
-            
-            # Initialize with default values
+            # Extract flagged status and categories
             flagged = False
             categories = {}
             
-            # Method 1: Direct access
+            # Direct access to flagged and categories
             if isinstance(moderation_result, dict):
                 if "flagged" in moderation_result:
                     flagged = moderation_result["flagged"]
                     categories = moderation_result.get("categories", {})
-                # Method 2: Check for "result" key
+                # Check for result key
                 elif "result" in moderation_result:
                     result = moderation_result["result"]
-                    # Result could be a dict
-                    if isinstance(result, dict):
-                        if "flagged" in result:
-                            flagged = result["flagged"]
-                            categories = result.get("categories", {})
-                    # Result could be a string that needs parsing
-                    elif isinstance(result, str):
-                        try:
-                            import json
-                            parsed = json.loads(result)
-                            if isinstance(parsed, dict):
-                                flagged = parsed.get("flagged", False)
-                                categories = parsed.get("categories", {})
-                        except json.JSONDecodeError:
-                            pass
-                # Method 3: Check for "content" key (some APIs might use this)
-                elif "content" in moderation_result:
-                    content = moderation_result["content"]
-                    if isinstance(content, list):
-                        for item in content:
-                            if isinstance(item, dict) and "text" in item:
-                                # Try to parse JSON from text
-                                try:
-                                    import json
-                                    parsed = json.loads(item["text"])
-                                    if isinstance(parsed, dict):
-                                        flagged = parsed.get("flagged", False)
-                                        categories = parsed.get("categories", {})
-                                except json.JSONDecodeError:
-                                    # If it's not JSON, check if it contains known strings
-                                    text = item["text"]
-                                    if "flagged: true" in text.lower():
-                                        flagged = True
-                # Method 4: Inspect all keys for potential result wrappers
-                else:
-                    for key, value in moderation_result.items():
-                        if isinstance(value, dict) and "flagged" in value:
-                            flagged = value["flagged"]
-                            categories = value.get("categories", {})
-                            break
+                    if isinstance(result, dict) and "flagged" in result:
+                        flagged = result["flagged"]
+                        categories = result.get("categories", {})
             
-            print(f"Parsed moderation result - Flagged: {flagged}")
+            # Print what we found
+            print(f"Extracted flagged status: {flagged}")
             if categories:
-                print(f"Parsed categories: {categories}")
+                print(f"Extracted categories: {categories}")
             
+            # Handle flagged content
             if flagged:
                 # Content was flagged, prepare explanation
                 flagged_categories = {k: v for k, v in categories.items() if v}
@@ -508,6 +547,7 @@ async def test_moderation_tool(test_content=None):
                 flagged = None
                 categories = None
                 
+                # Extract flagged status
                 if isinstance(result, dict):
                     if "flagged" in result:
                         flagged = result["flagged"]
@@ -518,6 +558,7 @@ async def test_moderation_tool(test_content=None):
                             flagged = result_data["flagged"]
                             categories = result_data.get("categories", {})
                 
+                # Display result
                 if flagged is not None:
                     print(f"\nFlagged: {flagged}")
                     if categories and any(categories.values()):
