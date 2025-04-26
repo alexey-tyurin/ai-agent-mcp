@@ -28,8 +28,7 @@ class ModerationServer:
         Args:
             service_name: Name for the MCP service
         """
-        # Set your OpenAI API key
-        # You should set this as an environment variable in production
+        # OpenAI API key should be set as an environment variable
         self.api_key = os.environ.get("OPENAI_API_KEY")
         if not self.api_key:
             raise ValueError("OPENAI_API_KEY environment variable is not set")

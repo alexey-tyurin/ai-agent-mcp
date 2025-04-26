@@ -1,55 +1,81 @@
-# ai-agent-mcp
+# Content Moderation Agent with MCP and LiteLLM
 
-# MCP Adder Service with Google ADK Client using Llama 3.2
+This project demonstrates a content moderation workflow using Google's Agent Development Kit (ADK) and the Model Context Protocol (MCP). It consists of:
 
-This project demonstrates how to build an MCP server that exposes a simple
-addition function and a Google ADK agent that calls this function using
-Meta's Llama 3.2 model via Ollama and LiteLLM.
+1. A moderation MCP server that proxies requests to OpenAI's moderation API
+2. An ADK agent that uses LiteLLM with Ollama to process user queries after moderation
 
 ## Prerequisites
 
-1. Install Ollama from https://ollama.com/
-2. Pull the Llama 3.2 model:
+- Python 3.9 or higher
+- Ollama installed and running locally with Llama 3 model
+- OpenAI API key
+
+## Installation
+
+1. Clone this repository
+2. Install dependencies:
    ```
-   ollama pull llama3.2
+   pip install -r requirements.txt
    ```
-3. Start the Ollama service (it should be running in the background)
+3. Install Ollama from https://ollama.com/ if not already installed
+4. Pull the Llama 3 model in Ollama:
+   ```
+   ollama pull llama3
+   ```
 
 ## Setup
 
-1. Install dependencies:
+1. Set your OpenAI API key as an environment variable:
    ```
-   python install_dependencies.py
-   ```
-
-2. Start the MCP server:
-   ```
-   python adder_server.py
-   ```
-   
-   The server will run on http://localhost:8000/sse
-
-3. In a new terminal, run the ADK client:
-   ```
-   python adder_agent.py
+   export OPENAI_API_KEY=your_api_key_here
    ```
 
-4. Interact with the agent by asking it to add numbers:
+## Running the Application
+
+1. Start the Ollama server:
    ```
-   You: Can you add 42 and 24?
+   ollama serve
    ```
 
-5. Type 'exit' to quit the client.
+2. Start the MCP moderation server in a new terminal:
+   ```
+   python moderation_server.py
+   ```
 
-## Project Structure
+3. Start the moderation agent in another terminal:
+   ```
+   python moderation_agent.py
+   ```
 
-- `adder_server.py`: MCP server with addition function
-- `adder_agent.py`: Google ADK agent with Llama 3.2 that connects to the MCP server
-- `install_dependencies.py`: Script to install required dependencies
+## Usage
 
-## Notes on LiteLLM and Ollama Integration
+Once both the server and agent are running, you can interact with the agent by typing questions. The agent will:
 
-- The agent uses LiteLLM to connect to locally running Llama 3.2 model via Ollama
-- It uses the 'ollama_chat' provider format for proper Ollama integration
-- Environment variables are set up to point to the Ollama API endpoint
+1. Send each query to the MCP server for moderation using OpenAI's moderation API
+2. If the content is flagged as inappropriate, explain which categories were flagged
+3. If the content is safe, process it with Llama 3 via Ollama and return the response
 
+To exit the application, type `exit`.
+
+## Implementation Details
+
+- `moderation_server.py`: MCP server that connects to OpenAI's moderation API
+- `moderation_agent.py`: Google ADK agent that uses MCP tools and LiteLLM with Ollama
+
+## Flow Diagram
+
+```
+User Query → Moderation Agent → MCP Server → OpenAI Moderation API
+                      ↓
+               Content Safe?
+                ↙     ↘
+          YES         NO
+           ↓           ↓
+        Process      Return
+        with LLM     Warning
+```
+
+## License
+
+See the LICENSE file for details. 

@@ -9,7 +9,6 @@ Run this after starting the server.
 
 import os
 import asyncio
-import json
 from typing import Dict, Any, List, Optional, Tuple
 from google.adk.agents import Agent, LlmAgent
 from google.adk.models.lite_llm import LiteLlm
@@ -18,8 +17,7 @@ from google.adk.tools.mcp_tool.mcp_toolset import SseServerParams
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai import types
-import traceback  # Add at the top of the file
-from google.adk import tools as adktools  # Add import for adktools
+import traceback
 
 class ModerationTool:
     """Wrapper class for the MCP moderation tool."""
@@ -40,10 +38,10 @@ class ModerationTool:
             raise ValueError("'moderate_content' tool not found in MCP server!")
         
         # Print tool details for debugging
-        print(f"Found moderation tool: {self.moderate_content_tool.name}")
-        print(f"Tool type: {type(self.moderate_content_tool)}")
-        if hasattr(self.moderate_content_tool, "description"):
-            print(f"Tool description: {self.moderate_content_tool.description}")
+        # print(f"Found moderation tool: {self.moderate_content_tool.name}")
+        # print(f"Tool type: {type(self.moderate_content_tool)}")
+        # if hasattr(self.moderate_content_tool, "description"):
+        #    print(f"Tool description: {self.moderate_content_tool.description}")
 
     async def moderate(self, content: str) -> Dict[str, Any]:
         """Moderate content using the MCP tool.
@@ -113,7 +111,7 @@ class ModerationTool:
                 
             # Check if it has a 'content' attribute
             if hasattr(raw_result, 'content') and raw_result.content:
-                print("Found content attribute in result")
+                # print("Found content attribute in result")
                 
                 # Access the first content item
                 if len(raw_result.content) > 0:
@@ -121,13 +119,13 @@ class ModerationTool:
                     
                     # Check if it has a 'text' attribute
                     if hasattr(content_item, 'text') and content_item.text:
-                        print(f"Found text in content[0]")
+                        # print(f"Found text in content[0]")
                         
                         # Try to parse the text as JSON
                         try:
                             import json
                             json_data = json.loads(content_item.text)
-                            print("Successfully parsed JSON data")
+                            # print("Successfully parsed JSON data")
                             return json_data
                         except json.JSONDecodeError:
                             print("Text is not valid JSON, returning as is")
@@ -135,7 +133,7 @@ class ModerationTool:
             
             # Check if it has a 'result' attribute
             elif hasattr(raw_result, 'result'):
-                print("Found result attribute")
+                # print("Found result attribute")
                 result_data = raw_result.result
                 
                 # If result is a dict, return it directly
@@ -298,10 +296,7 @@ class ModerationAgent:
                 
                 # Create LLM model
                 self.llm = LiteLlm(model="ollama_chat/llama3")
-                
-                # Debug: Check available methods on LLM
-                self._debug_llm_methods()
-                
+
                 # Create agent without tools
                 self.agent = self.create_adk_agent()
                 
@@ -329,7 +324,7 @@ class ModerationAgent:
 
             # Check if we got the moderation tool
             tool_names = [tool.name for tool in self.mcp_tools]
-            print(f"Available MCP tools: {', '.join(tool_names)}")
+            # print(f"Available MCP tools: {', '.join(tool_names)}")
 
             if "moderate_content" not in tool_names:
                 print("ERROR: 'moderate_content' tool not found in MCP server!")
@@ -341,10 +336,7 @@ class ModerationAgent:
             
             # Create LLM model
             self.llm = LiteLlm(model="ollama_chat/llama3")
-            
-            # Debug: Check available methods on LLM
-            self._debug_llm_methods()
-            
+
             # Create agent without MCP tools - we'll only use moderation directly
             self.agent = self.create_adk_agent()
 
@@ -372,28 +364,7 @@ class ModerationAgent:
             if hasattr(self, 'exit_stack') and self.exit_stack:
                 await self.exit_stack.aclose()
             return False
-            
-    def _debug_llm_methods(self):
-        """Debug helper to check available methods on the LLM."""
-        if not self.llm:
-            print("LLM not initialized")
-            return
-            
-        print("\nDebug: Available LLM methods:")
-        methods = [m for m in dir(self.llm) if not m.startswith('_') and callable(getattr(self.llm, m))]
-        for method in methods:
-            print(f"- {method}")
-            
-        print("\nDebug: LLM attributes:")
-        attrs = [a for a in dir(self.llm) if not a.startswith('_') and not callable(getattr(self.llm, a))]
-        for attr in attrs:
-            try:
-                value = getattr(self.llm, attr)
-                print(f"- {attr}: {value}")
-            except:
-                print(f"- {attr}: <error accessing>")
-        print()
-    
+
     async def _init_mcp_tools(self):
         """Initialize connection to the MCP server and get tools.
         
@@ -424,9 +395,6 @@ class ModerationAgent:
             print(f"Checking moderation for: '{user_input}'")
             moderation_result = await self.moderation_tool.moderate(user_input)
             print("Moderation check completed.")
-            
-            # Debug the result if needed
-            print(f"Moderation result type: {type(moderation_result)}")
             
             # Check for errors in the moderation call
             if moderation_result and isinstance(moderation_result, dict) and "error_message" in moderation_result:
