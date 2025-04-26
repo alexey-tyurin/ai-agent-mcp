@@ -68,7 +68,7 @@ class ModerationServer:
         """
         try:
             # Call OpenAI's moderation API
-            response = self.client.moderations.create(input=content, model="text-moderation-latest")
+            response = self.client.moderations.create(input=content, model="omni-moderation-latest")
             
             # Process response
             result = response.results[0]

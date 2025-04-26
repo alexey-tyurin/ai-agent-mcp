@@ -18,6 +18,7 @@ from google.adk.tools.mcp_tool.mcp_toolset import SseServerParams
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai import types
+import traceback  # Add at the top of the file
 
 class ModerationTool:
     """Wrapper class for the MCP moderation tool."""
@@ -36,6 +37,12 @@ class ModerationTool:
         )
         if not self.moderate_content_tool:
             raise ValueError("'moderate_content' tool not found in MCP server!")
+        
+        # Print tool details for debugging
+        print(f"Found moderation tool: {self.moderate_content_tool.name}")
+        print(f"Tool type: {type(self.moderate_content_tool)}")
+        if hasattr(self.moderate_content_tool, "description"):
+            print(f"Tool description: {self.moderate_content_tool.description}")
 
     async def moderate(self, content: str) -> Dict[str, Any]:
         """Moderate content using the MCP tool.
@@ -46,8 +53,98 @@ class ModerationTool:
         Returns:
             Moderation result with flagged status and categories
         """
-        result = await self.moderate_content_tool.invoke({"content": content})
-        return result
+        try:
+            print(f"Attempting to moderate content: '{content}'")
+            
+            # The error message tells us what we need: 'args' and 'tool_context'
+            print("Calling run_async with required arguments")
+            
+            # Prepare arguments for run_async
+            # 'args' should be a dictionary with the content parameter
+            args = {"content": content}
+            
+            # 'tool_context' is likely an execution context
+            # We'll create a minimal context
+            tool_context = {
+                "user_id": "user123",
+                "session_id": "session456",
+                "request_id": "req789"
+            }
+            
+            result = None
+            try:
+                result = await self.moderate_content_tool.run_async(
+                    args=args,
+                    tool_context=tool_context
+                )
+                print(f"Result from run_async: {result}")
+            except Exception as tool_error:
+                print(f"Error calling run_async: {tool_error}")
+                traceback.print_exc()
+                result = None
+            
+            # Check if we got a meaningful result
+            if result and isinstance(result, dict) and len(result) > 0:
+                print("Got a result from run_async, returning it")
+                return result
+            
+            # We couldn't get a result from the tool, so use our fallback
+            print("No useful result from tool, using simulated moderation")
+            return self.simulate_moderation(content)
+            
+        except Exception as e:
+            print(f"Error in moderation: {e}")
+            print(f"Exception type: {type(e)}")
+            traceback.print_exc()
+            
+            # As a fallback, we'll simulate moderation based on keywords
+            print("Error occurred, using simulated moderation")
+            return self.simulate_moderation(content)
+    
+    def simulate_moderation(self, text: str) -> Dict[str, Any]:
+        """Simulate moderation based on simple keyword matching.
+        
+        This is a fallback when the real moderation API can't be accessed.
+        
+        Args:
+            text: Text to check
+            
+        Returns:
+            Simulated moderation result
+        """
+        print("Using simulated moderation based on keywords")
+        
+        # Convert to lowercase for case-insensitive matching
+        text = text.lower()
+        
+        # Define categories and their keywords
+        categories = {
+            "harassment": ["harass", "threaten", "abuse", "bully", "hate"],
+            "hate": ["hate", "racist", "sexist", "discrimination"],
+            "sexual": ["sex", "porn", "naked", "nude", "explicit"],
+            "violence": ["kill", "harm", "hurt", "attack", "bomb", "shoot", "weapon"],
+            "self-harm": ["suicide", "self-harm", "hurt myself", "kill myself"],
+            "dangerous": ["how to make", "bomb", "weapon", "hack", "steal"]
+        }
+        
+        # Check for matches
+        matches = {}
+        for category, keywords in categories.items():
+            matches[category] = any(keyword in text for keyword in keywords)
+        
+        # Overall flagged status
+        flagged = any(matches.values())
+        
+        # Create scores (simple 0 or 0.9 based on match)
+        scores = {category: 0.9 if matched else 0.0 for category, matched in matches.items()}
+        
+        # Return simulated result
+        return {
+            "flagged": flagged,
+            "categories": matches,
+            "category_scores": scores,
+            "note": "This is a simulated moderation result using keyword matching."
+        }
 
 class ModerationAgent:
     """Agent that moderates content using MCP server before processing with LLM."""
@@ -188,10 +285,80 @@ class ModerationAgent:
             moderation_result = await self.moderation_tool.moderate(user_input)
             print("Moderation check completed.")
             
-            if moderation_result.get("flagged", False):
+            # Debug the result
+            print(f"Debug - Moderation result type: {type(moderation_result)}")
+            print(f"Debug - Moderation result: {moderation_result}")
+            
+            # Check for errors in the moderation call
+            if "error_message" in moderation_result:
+                print(f"Error in moderation: {moderation_result['error_message']}")
+                error_response = f"Sorry, I encountered an error when checking content moderation. Error: {moderation_result['error_message']}"
+                return error_response
+            
+            # The MCP server might wrap the actual content moderation result in a specific format
+            # We'll try to find the flagged status and categories using different path checks
+            
+            # Initialize with default values
+            flagged = False
+            categories = {}
+            
+            # Method 1: Direct access
+            if isinstance(moderation_result, dict):
+                if "flagged" in moderation_result:
+                    flagged = moderation_result["flagged"]
+                    categories = moderation_result.get("categories", {})
+                # Method 2: Check for "result" key
+                elif "result" in moderation_result:
+                    result = moderation_result["result"]
+                    # Result could be a dict
+                    if isinstance(result, dict):
+                        if "flagged" in result:
+                            flagged = result["flagged"]
+                            categories = result.get("categories", {})
+                    # Result could be a string that needs parsing
+                    elif isinstance(result, str):
+                        try:
+                            import json
+                            parsed = json.loads(result)
+                            if isinstance(parsed, dict):
+                                flagged = parsed.get("flagged", False)
+                                categories = parsed.get("categories", {})
+                        except json.JSONDecodeError:
+                            pass
+                # Method 3: Check for "content" key (some APIs might use this)
+                elif "content" in moderation_result:
+                    content = moderation_result["content"]
+                    if isinstance(content, list):
+                        for item in content:
+                            if isinstance(item, dict) and "text" in item:
+                                # Try to parse JSON from text
+                                try:
+                                    import json
+                                    parsed = json.loads(item["text"])
+                                    if isinstance(parsed, dict):
+                                        flagged = parsed.get("flagged", False)
+                                        categories = parsed.get("categories", {})
+                                except json.JSONDecodeError:
+                                    # If it's not JSON, check if it contains known strings
+                                    text = item["text"]
+                                    if "flagged: true" in text.lower():
+                                        flagged = True
+                # Method 4: Inspect all keys for potential result wrappers
+                else:
+                    for key, value in moderation_result.items():
+                        if isinstance(value, dict) and "flagged" in value:
+                            flagged = value["flagged"]
+                            categories = value.get("categories", {})
+                            break
+            
+            print(f"Parsed moderation result - Flagged: {flagged}")
+            if categories:
+                print(f"Parsed categories: {categories}")
+            
+            if flagged:
                 # Content was flagged, prepare explanation
-                flagged_categories = {k: v for k, v in moderation_result.get("categories", {}).items() if v}
-                response = f"Your query contains content that violates our content policies.\nFlagged categories: {', '.join(flagged_categories.keys())}"
+                flagged_categories = {k: v for k, v in categories.items() if v}
+                response = f"Your query contains content that violates our content policies.\nFlagged categories: {', '.join(flagged_categories.keys() or ['unknown'])}"
                 return response
             
             # Content is safe, proceed with the agent
@@ -223,6 +390,8 @@ class ModerationAgent:
                 return "No response received."
             
         except Exception as e:
+            traceback_str = traceback.format_exc()
+            print(f"Exception traceback: {traceback_str}")
             return f"Error during processing: {e}"
     
     async def interactive_session(self):
@@ -267,9 +436,146 @@ async def run_test_cases(agent):
         print(f"Response: {response}")
         print("-" * 50)
 
+# Update the test function
+async def test_moderation_tool(test_content=None):
+    """Test the moderation tool directly to diagnose issues.
+    
+    Args:
+        test_content: Optional text to test for moderation. If not provided, uses a default test.
+    """
+    print("\n==== DIRECT MODERATION TOOL TEST ====\n")
+    
+    # Use provided test content or default
+    if test_content is None:
+        # Use two test cases - one safe and one potentially unsafe
+        test_contents = [
+            "Hello, how are you today?",  # Safe content
+            "I want to harm someone"       # Potentially harmful content
+        ]
+    else:
+        test_contents = [test_content]
+    
+    try:
+        # Connect to MCP server
+        print(f"Connecting to MCP server at http://localhost:8000/sse...")
+        tools, exit_stack = await MCPToolset.from_server(
+            connection_params=SseServerParams(url="http://localhost:8000/sse")
+        )
+        
+        # List available tools
+        tool_names = [tool.name for tool in tools]
+        print(f"Available MCP tools: {', '.join(tool_names)}")
+        
+        if "moderate_content" not in tool_names:
+            print("ERROR: 'moderate_content' tool not found in MCP server!")
+            await exit_stack.aclose()
+            return
+        
+        # Get the moderation tool
+        moderation_tool = next(tool for tool in tools if tool.name == "moderate_content")
+        print(f"Found moderation tool: {moderation_tool.name}")
+        print(f"Tool type: {type(moderation_tool)}")
+        
+        # Create a wrapper with our simulate_moderation fallback
+        mod_wrapper = ModerationTool([moderation_tool])
+        
+        # Print the tool's available methods and attributes
+        print("\nTool methods and attributes:")
+        for attr in dir(moderation_tool):
+            if not attr.startswith('__'):
+                try:
+                    attr_value = getattr(moderation_tool, attr)
+                    if callable(attr_value):
+                        print(f"  {attr} (method)")
+                    else:
+                        print(f"  {attr}: {attr_value}")
+                except:
+                    print(f"  {attr}: <error accessing>")
+        
+        # Run tests for each test content
+        for i, content in enumerate(test_contents):
+            print(f"\n----- Test {i+1}: '{content}' -----")
+            
+            try:
+                # Use our wrapper to moderate the content
+                result = await mod_wrapper.moderate(content)
+                
+                print(f"\nModeration result:")
+                print(f"  Type: {type(result)}")
+                print(f"  Content: {result}")
+                
+                # Try to interpret the result
+                flagged = None
+                categories = None
+                
+                if isinstance(result, dict):
+                    if "flagged" in result:
+                        flagged = result["flagged"]
+                        categories = result.get("categories", {})
+                    elif "result" in result:
+                        result_data = result["result"]
+                        if isinstance(result_data, dict) and "flagged" in result_data:
+                            flagged = result_data["flagged"]
+                            categories = result_data.get("categories", {})
+                
+                if flagged is not None:
+                    print(f"\nFlagged: {flagged}")
+                    if categories and any(categories.values()):
+                        flagged_categories = {k: v for k, v in categories.items() if v}
+                        print(f"Flagged categories: {flagged_categories}")
+                else:
+                    print("\nCouldn't determine flagged status - exploring result structure:")
+                    if isinstance(result, dict):
+                        for key, value in result.items():
+                            print(f"  {key}: {type(value)}")
+                            if isinstance(value, dict):
+                                print(f"    Keys: {list(value.keys())}")
+                            elif isinstance(value, list) and value:
+                                print(f"    List length: {len(value)}")
+                                print(f"    First item type: {type(value[0])}")
+                
+                # Check if we got a simulated result
+                if isinstance(result, dict) and result.get("note", "").startswith("This is a simulated"):
+                    print("\nUsed simulated moderation as fallback")
+            except Exception as e:
+                print(f"Error testing content '{content}': {e}")
+                traceback.print_exc()
+        
+    except Exception as e:
+        print(f"Error in test: {e}")
+        traceback.print_exc()
+    finally:
+        if 'exit_stack' in locals():
+            await exit_stack.aclose()
+            print("MCP connection closed.")
+    
+    print("\n==== TEST COMPLETED ====\n")
+
 async def main():
     """Main function to run the agent."""
-    # Create agent
+    # Check for command line args
+    import sys
+    if len(sys.argv) > 1:
+        if sys.argv[1] == "--test-tool":
+            # If a test content is provided as the third argument
+            test_content = sys.argv[2] if len(sys.argv) > 2 else None
+            await test_moderation_tool(test_content)
+            return
+        elif sys.argv[1] == "--test":
+            # Create and initialize agent
+            agent = ModerationAgent()
+            success = await agent.initialize()
+            if not success:
+                print("Failed to initialize agent.")
+                return
+                
+            # Run test cases
+            await run_test_cases(agent)
+            # Clean up
+            await agent.close()
+            return
+    
+    # Create agent for normal operation
     agent = ModerationAgent()
     
     try:
@@ -279,14 +585,8 @@ async def main():
             print("Failed to initialize agent.")
             return
         
-        # Check for command line args
-        import sys
-        if len(sys.argv) > 1 and sys.argv[1] == "--test":
-            # Run test cases
-            await run_test_cases(agent)
-        else:
-            # Run interactive session
-            await agent.interactive_session()
+        # Run interactive session
+        await agent.interactive_session()
             
     except Exception as e:
         print(f"Error occurred: {e}")

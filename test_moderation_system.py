@@ -18,6 +18,7 @@ import subprocess
 import time
 import signal
 import sys
+import traceback
 from moderation_agent import ModerationAgent, TEST_QUERIES
 
 # ANSI color codes for prettier output
@@ -59,6 +60,10 @@ def print_info(text):
     """Print info message."""
     print(f"{Colors.CYAN}{text}{Colors.ENDC}")
 
+def print_debug(text):
+    """Print debug information."""
+    print(f"{Colors.BOLD}DEBUG: {text}{Colors.ENDC}")
+
 # Additional test queries with various content types
 EXTENDED_TEST_QUERIES = [
     # Safe queries
@@ -91,6 +96,7 @@ async def run_tests():
     
     try:
         # Start the server in a subprocess
+        print_info("Executing: python moderation_server.py")
         server_process = subprocess.Popen(
             ["python", "moderation_server.py"],
             stdout=subprocess.PIPE,
@@ -105,7 +111,9 @@ async def run_tests():
         if server_process.poll() is not None:
             # Server exited
             stdout, stderr = server_process.communicate()
-            print_error(f"Server failed to start: {stderr}")
+            print_error(f"Server failed to start!")
+            print_error(f"STDOUT: {stdout}")
+            print_error(f"STDERR: {stderr}")
             return
         
         print_success("Server started successfully!")
@@ -120,6 +128,30 @@ async def run_tests():
             return
         
         print_success("Agent initialized successfully!")
+        
+        # Print debug information
+        print_debug(f"Available MCP tools: {[tool.name for tool in agent.mcp_tools]}")
+        
+        # Run a single test query first with full debugging
+        print_section("Initial Debug Test")
+        test_query = "Test query to check functionality"
+        print_info(f"Testing with: '{test_query}'")
+        
+        try:
+            print_debug("Starting moderation process")
+            response = await agent.process_query(test_query)
+            print_debug("Moderation process completed")
+            print_success(f"Response: {response}")
+        except Exception as e:
+            print_error(f"Error during test: {e}")
+            print_error(traceback.format_exc())
+        
+        # Ask user if they want to continue with more tests
+        print_info("\nDo you want to continue with more tests? (y/n)")
+        continue_choice = input().strip().lower()
+        if continue_choice != 'y':
+            print_info("Skipping further tests.")
+            return
         
         # Run the standard test queries
         print_section("Running Standard Test Queries")
@@ -175,24 +207,31 @@ async def run_tests():
         
     except Exception as e:
         print_error(f"Error during test: {e}")
+        print_error(traceback.format_exc())
     finally:
         # Clean up
         print_section("Cleaning Up")
         
         # Close the agent connection
         if 'agent' in locals():
-            await agent.close()
-            print_success("Agent connection closed.")
+            try:
+                await agent.close()
+                print_success("Agent connection closed.")
+            except Exception as e:
+                print_error(f"Error closing agent: {e}")
         
         # Terminate the server
         if 'server_process' in locals():
-            server_process.terminate()
             try:
-                server_process.wait(timeout=5)
-                print_success("Server terminated successfully.")
-            except subprocess.TimeoutExpired:
-                server_process.kill()
-                print_warning("Server had to be forcefully killed.")
+                server_process.terminate()
+                try:
+                    server_process.wait(timeout=5)
+                    print_success("Server terminated successfully.")
+                except subprocess.TimeoutExpired:
+                    server_process.kill()
+                    print_warning("Server had to be forcefully killed.")
+            except Exception as e:
+                print_error(f"Error terminating server: {e}")
         
         print_header("TEST COMPLETED")
 
@@ -203,11 +242,14 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print_warning("\nTest interrupted by user.")
         # Kill any remaining server process
-        for proc in subprocess.check_output(["ps", "-ef"]).decode().split('\n'):
-            if "moderation_server.py" in proc:
-                pid = int(proc.split()[1])
-                try:
-                    os.kill(pid, signal.SIGTERM)
-                except:
-                    pass
+        try:
+            for proc in subprocess.check_output(["ps", "-ef"]).decode().split('\n'):
+                if "moderation_server.py" in proc:
+                    try:
+                        pid = int(proc.split()[1])
+                        os.kill(pid, signal.SIGTERM)
+                    except (IndexError, ValueError, ProcessLookupError):
+                        pass
+        except Exception:
+            pass
         sys.exit(0) 
