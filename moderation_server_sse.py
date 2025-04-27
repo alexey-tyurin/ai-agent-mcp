@@ -1,5 +1,5 @@
 # ---------------------------------------------------------
-# Moderation MCP Server Implementation (moderation_server.py)
+# Moderation MCP Server Implementation (moderation_server_sse.py)
 # ---------------------------------------------------------
 
 """

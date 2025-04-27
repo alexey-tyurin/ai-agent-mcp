@@ -19,7 +19,7 @@ import time
 import signal
 import sys
 import traceback
-from moderation_agent import ModerationAgent, TEST_QUERIES
+from moderation_agent_sse import ModerationAgent, TEST_QUERIES
 
 # ANSI color codes for prettier output
 class Colors:
@@ -96,9 +96,9 @@ async def run_tests():
     
     try:
         # Start the server in a subprocess
-        print_info("Executing: python moderation_server.py")
+        print_info("Executing: python moderation_server_sse.py")
         server_process = subprocess.Popen(
-            ["python", "moderation_server.py"],
+            ["python", "moderation_server_sse.py"],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True
@@ -244,7 +244,7 @@ if __name__ == "__main__":
         # Kill any remaining server process
         try:
             for proc in subprocess.check_output(["ps", "-ef"]).decode().split('\n'):
-                if "moderation_server.py" in proc:
+                if "moderation_server_sse.py" in proc:
                     try:
                         pid = int(proc.split()[1])
                         os.kill(pid, signal.SIGTERM)

@@ -1,5 +1,5 @@
 # ---------------------------------------------------------
-# Moderation ADK Client Implementation (moderation_agent.py)
+# Moderation ADK Client Implementation (moderation_agent_sse.py)
 # ---------------------------------------------------------
 
 """
