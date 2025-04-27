@@ -4,20 +4,18 @@
 
 """
 FastMCP server that exposes a function to moderate content using OpenAI
-This version supports both HTTP (SSE) and STDIO transport
-Run with --stdio flag when using with the stdio client.
+This version supports STDIO transport
 """
 
 import os
 import sys
 from typing import Dict, Any
 from mcp.server.fastmcp import FastMCP
-from mcp.server.stdio import stdio_server
 import openai
 from pydantic import BaseModel, Field
 
 # Set up more verbose debugging
-DEBUG = True  # Set to True for more debugging output
+DEBUG = False  # Set to True for more debugging output
 
 def debug_print(msg):
     """Print debug messages to stderr if DEBUG is enabled."""
@@ -37,7 +35,7 @@ class ModerationResult(BaseModel):
     category_scores: Dict[str, float] = Field(description="Scores for each category")
 
 class ModerationServer:
-    """Class for the MCP moderation server with support for both HTTP and STDIO."""
+    """Class for the MCP moderation server with support STDIO."""
     
     def __init__(self, service_name="Content Moderation Service"):
         """Initialize the MCP server.
@@ -119,40 +117,24 @@ class ModerationServer:
         """Run the MCP server with the specified transport.
         
         Args:
-            transport: Transport mechanism ("sse" for HTTP or "stdio" for STDIO)
+            transport: Transport mechanism ("stdio" for STDIO)
         """
         print(f"Starting Moderation MCP Server with {transport} transport...", file=sys.stderr, flush=True)
-        
-        # Create the appropriate server based on transport
-        if transport == "stdio":
-            debug_print("Using stdio transport")
-            # For stdio, we use a different approach
-            # Create a FastMCP instance first
-            self.mcp = FastMCP(self.service_name)
-            debug_print("Created FastMCP instance")
-            
-            # Register tools
-            self.register_tools()
-            
-            try:
-                self.mcp.run(transport="stdio")
-                debug_print("stdio_server function completed") # This may never be reached
-            except Exception as e:
-                print(f"Error in stdio_server: {e}", file=sys.stderr, flush=True)
-                debug_print(f"Full exception in stdio_server: {repr(e)}")
-                raise
-        else:
-            debug_print("Using regular FastMCP approach for transport: {transport}")
-            # For HTTP/SSE, use the regular FastMCP approach
-            self.mcp = FastMCP(self.service_name)
-            
-            # Register tools
-            self.register_tools()
-            
-            # Run the server with the specified transport
-            debug_print(f"Calling mcp.run with transport: {transport}")
-            self.mcp.run(transport=transport)
-            debug_print("mcp.run completed") # This may never be reached for certain transports
+
+        debug_print("Using stdio transport")
+        self.mcp = FastMCP(self.service_name)
+        debug_print("Created FastMCP instance")
+
+        # Register tools
+        self.register_tools()
+
+        try:
+            self.mcp.run(transport="stdio")
+            debug_print("stdio_server function completed") # This may never be reached
+        except Exception as e:
+            print(f"Error in stdio_server: {e}", file=sys.stderr, flush=True)
+            debug_print(f"Full exception in stdio_server: {repr(e)}")
+            raise
 
 # Example to test the moderation directly (without MCP)
 def test_moderation():
@@ -192,8 +174,7 @@ if __name__ == "__main__":
         test_moderation()
         print("\nTest complete. Starting server...", file=sys.stderr)
     
-    # Determine transport mode - default to stdio instead of sse
-    transport = "sse" if "--sse" in sys.argv else "stdio"
+    transport = "stdio"
     debug_print(f"Using transport: {transport}")
     
     # Start the server with the specified transport

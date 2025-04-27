@@ -9,17 +9,14 @@ Run this after starting the server with stdio transport mode.
 
 import os
 import asyncio
-import subprocess
-from typing import Dict, Any, List, Optional, Tuple
-from google.adk.agents import Agent, LlmAgent
+from typing import Dict, Any
+from google.adk.agents import LlmAgent
 from google.adk.models.lite_llm import LiteLlm
-from google.adk.tools.mcp_tool import MCPToolset
 from mcp.client.stdio import StdioServerParameters
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai import types
 import traceback
-import json
 from contextlib import AsyncExitStack
 from mcp import ClientSession
 from mcp.client.stdio import stdio_client
@@ -311,8 +308,7 @@ class ModerationAgentStdio:
             
             # Start the server process for stdio mode - we don't need to create a process here
             # as we'll use StdioServerParameters to specify the command to run
-            print(f"Using MCP server script: {self.server_script_path}")
-            
+
             # Initialize MCP tools using stdio client
             print("Connecting to MCP server via STDIO...")
             self.mcp_tools, self.exit_stack = await self._init_mcp_tools()
@@ -362,10 +358,7 @@ class ModerationAgentStdio:
     
     async def _init_mcp_tools(self):
         """Initialize connection to the MCP server using StdioServerParameters and stdio_client.
-        
-        This method uses the stdio_client approach as described in the MCP documentation and
-        plainenglish.io article, which provides better compatibility with the stdio transport.
-        
+
         Returns:
             Tuple of MCP tools and exit stack
         """
@@ -384,16 +377,15 @@ class ModerationAgentStdio:
             # Only explicitly set env if we need to pass OPENAI_API_KEY
             env = {"OPENAI_API_KEY": openai_api_key}
         
-        print(f"Creating StdioServerParameters with script: {self.server_script_path}")
         # Create StdioServerParameters to connect to the server process
         server_params = StdioServerParameters(
             command="python",
             args=[self.server_script_path, "--stdio"],
             env=env  # Will be None or {"OPENAI_API_KEY": openai_api_key}
         )
-        
-        print("Connecting to MCP server...")
-        
+
+        # print("Connecting to MCP server...")
+
         try:
             exit_stack = AsyncExitStack()
             
