@@ -20,6 +20,7 @@ import traceback
 from contextlib import AsyncExitStack
 from mcp import ClientSession
 from mcp.client.stdio import stdio_client
+import sys
 
 class ModerationTool:
     """Wrapper class for the MCP moderation tool."""
@@ -384,7 +385,7 @@ class ModerationAgentStdio:
             env=env  # Will be None or {"OPENAI_API_KEY": openai_api_key}
         )
 
-        # print("Connecting to MCP server...")
+        print("Connecting to MCP server...")
 
         try:
             exit_stack = AsyncExitStack()
@@ -543,23 +544,43 @@ class ModerationAgentStdio:
     
     async def interactive_session(self):
         """Run an interactive session with the user."""
-        print("Moderation Agent (STDIO) ready! Type a question to get started.")
+        print("Moderation Agent ready! Type a question to get started.")
         print("Type 'exit' to quit.")
-        
-        # Interaction loop
-        while True:
-            user_input = input("You: ")
-            if user_input.lower() == "exit":
-                break
-            
-            response = await self.process_query(user_input)
-            print(f"Agent: {response}")
+
+        try:
+            while True:
+                try:
+                    user_input = input("User: ")
+                    if user_input.lower() in ["exit", "quit"]:
+                        print("Exiting session...")
+                        return
+                    
+                    if not user_input:
+                        continue
+                    
+                    response_text = await self.process_query(user_input)
+                    print(f"Assistant: {response_text}")
+                
+                except KeyboardInterrupt:
+                    print("\nExiting session...")
+                    return
+                except Exception as e:
+                    print(f"Error: {e}")
+        finally:
+            # Only try to close if we're exiting due to an exception
+            # In normal flow, we'll close after returning from this method
+            if sys.exc_info()[0] is not None:
+                await self.close()
     
     async def close(self):
-        """Clean up resources."""
-        if hasattr(self, 'exit_stack') and self.exit_stack:
-            await self.exit_stack.aclose()
-            print("MCP connection closed.")
+        """Close the connection to the MCP server."""
+        try:
+            if hasattr(self, 'exit_stack') and self.exit_stack is not None:
+                await self.exit_stack.aclose()
+                print("MCP connection closed.")
+                self.exit_stack = None
+        except Exception as e:
+            print(f"Error closing MCP connection: {e}")
         
         # No need to manually terminate the server process as it will be
         # handled by the exit_stack when using stdio_client
@@ -589,7 +610,6 @@ async def run_test_cases(agent):
 async def main():
     """Main function to run the agent."""
     # Check for command line args
-    import sys
     if len(sys.argv) > 1:
         if sys.argv[1] == "--test":
             # Create and initialize agent in test mode
@@ -617,12 +637,19 @@ async def main():
         
         # Run interactive session
         await agent.interactive_session()
+        # After interactive session completes, close resources
+        await agent.close()
             
     except Exception as e:
         print(f"Error occurred: {e}")
     finally:
-        # Clean up
-        await agent.close()
+        # We only need to attempt to close in the finally block if an exception occurred
+        # since we've already closed in the normal flow
+        if 'agent' in locals() and hasattr(agent, 'exit_stack') and agent.exit_stack:
+            try:
+                await agent.close()
+            except Exception as close_error:
+                print(f"Error during cleanup: {close_error}")
 
 # Run the client when executed directly
 if __name__ == "__main__":
