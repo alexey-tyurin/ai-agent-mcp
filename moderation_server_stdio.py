@@ -134,10 +134,8 @@ class ModerationServer:
             # Register tools
             self.register_tools()
             
-            debug_print("About to call stdio_server function - this is where we might hang")
-            # Run with stdio_server function
             try:
-                stdio_server(self.mcp)
+                self.mcp.run(transport="stdio")
                 debug_print("stdio_server function completed") # This may never be reached
             except Exception as e:
                 print(f"Error in stdio_server: {e}", file=sys.stderr, flush=True)
