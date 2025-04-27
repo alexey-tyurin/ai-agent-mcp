@@ -36,12 +36,6 @@ class ModerationTool:
         )
         if not self.moderate_content_tool:
             raise ValueError("'moderate_content' tool not found in MCP server!")
-        
-        # Print tool details for debugging
-        # print(f"Found moderation tool: {self.moderate_content_tool.name}")
-        # print(f"Tool type: {type(self.moderate_content_tool)}")
-        # if hasattr(self.moderate_content_tool, "description"):
-        #    print(f"Tool description: {self.moderate_content_tool.description}")
 
     async def moderate(self, content: str) -> Dict[str, Any]:
         """Moderate content using the MCP tool.
@@ -111,21 +105,18 @@ class ModerationTool:
                 
             # Check if it has a 'content' attribute
             if hasattr(raw_result, 'content') and raw_result.content:
-                # print("Found content attribute in result")
-                
+
                 # Access the first content item
                 if len(raw_result.content) > 0:
                     content_item = raw_result.content[0]
                     
                     # Check if it has a 'text' attribute
                     if hasattr(content_item, 'text') and content_item.text:
-                        # print(f"Found text in content[0]")
-                        
+
                         # Try to parse the text as JSON
                         try:
                             import json
                             json_data = json.loads(content_item.text)
-                            # print("Successfully parsed JSON data")
                             return json_data
                         except json.JSONDecodeError:
                             print("Text is not valid JSON, returning as is")
@@ -133,7 +124,6 @@ class ModerationTool:
             
             # Check if it has a 'result' attribute
             elif hasattr(raw_result, 'result'):
-                # print("Found result attribute")
                 result_data = raw_result.result
                 
                 # If result is a dict, return it directly
@@ -324,7 +314,7 @@ class ModerationAgent:
 
             # Check if we got the moderation tool
             tool_names = [tool.name for tool in self.mcp_tools]
-            # print(f"Available MCP tools: {', '.join(tool_names)}")
+            print(f"Available MCP tools: {', '.join(tool_names)}")
 
             if "moderate_content" not in tool_names:
                 print("ERROR: 'moderate_content' tool not found in MCP server!")
