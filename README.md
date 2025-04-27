@@ -1,81 +1,188 @@
-# Content Moderation Agent with MCP and LiteLLM
+# AI Content Moderation System
 
-This project demonstrates a content moderation workflow using Google's Agent Development Kit (ADK) and the Model Context Protocol (MCP). It consists of:
+A production-ready content moderation system that leverages OpenAI's moderation API through Google's Agent Development Kit (ADK) and Machine Conversation Protocol (MCP).
 
-1. A moderation MCP server that proxies requests to OpenAI's moderation API
-2. An ADK agent that uses LiteLLM with Ollama to process user queries after moderation
+![Project Banner](https://i.imgur.com/QObdWb5.png)
 
-## Prerequisites
+## Business Value
+
+- **Free Content Moderation**: Utilize OpenAI's moderation API at no additional cost to filter harmful content.
+- **Protect Users & Platforms**: Automatically identify and block dangerous, harmful, or inappropriate content.
+- **Regulatory Compliance**: Help meet legal requirements for content monitoring on digital platforms.
+- **Scale with Confidence**: Handle moderation at scale without manual review bottlenecks.
+
+## Technical Value
+
+- **Cross-Vendor Implementation**: Practical demonstration of Google ADK agents communicating with OpenAI services.
+- **Dual Transport Options**: Support for both Server-Sent Events (SSE) and Standard I/O (STDIO) transports.
+- **Modular Architecture**: Easily extensible to support additional moderation providers or capabilities.
+- **Production-Ready Design**: Error handling, logging, and separation of concerns for real-world use.
+
+## Architecture
+
+This project implements two variants of a content moderation flow:
+
+### SSE Transport Architecture
+
+```
+┌────────────┐    ┌──────────────┐    ┌──────────────┐    ┌─────────────┐
+│  User Query │──→│ ADK Agent    │──→│ MCP Client    │──→│ MCP Server  │
+│             │    │ (SSE Client) │    │ (Moderation) │    │ (SSE)       │
+└────────────┘    └──────────────┘    └──────────────┘    └──────┬──────┘
+                          ↑                                      │
+                          │                                      ↓
+                          │                              ┌─────────────┐
+                          │                              │ OpenAI      │
+                          └──────────────────────────────┤ Moderation  │
+                                Response                  │ API         │
+                                                         └─────────────┘
+```
+
+### STDIO Transport Architecture
+
+```
+┌────────────┐    ┌──────────────┐    ┌──────────────┐    ┌─────────────┐
+│  User Query │──→│ ADK Agent    │──→│ MCP Client    │──→│ MCP Server  │
+│             │    │ (STDIO)      │    │ (Moderation) │    │ (STDIO)     │
+└────────────┘    └──────────────┘    └──────────────┘    └──────┬──────┘
+                          ↑                                      │
+                          │                                      ↓
+                          │                              ┌─────────────┐
+                          │                              │ OpenAI      │
+                          └──────────────────────────────┤ Moderation  │
+                                Response                  │ API         │
+                                                         └─────────────┘
+```
+
+## Setup Instructions
+
+### Prerequisites
 
 - Python 3.9 or higher
-- Ollama installed and running locally with Llama 3 model
 - OpenAI API key
+- [Ollama](https://ollama.ai/) (for local LLM serving, optional)
 
-## Installation
+### Installation
 
-1. Clone this repository
-2. Install dependencies:
-   ```
-   pip install -r requirements.txt
-   ```
-3. Install Ollama from https://ollama.com/ if not already installed
-4. Pull the Llama 3 model in Ollama:
-   ```
-   ollama pull llama3
-   ```
-
-## Setup
-
-1. Set your OpenAI API key as an environment variable:
-   ```
-   export OPENAI_API_KEY=your_api_key_here
-   ```
-
-## Running the Application
-
-1. Start the Ollama server:
-   ```
-   ollama serve
-   ```
-
-2. Start the MCP moderation server in a new terminal:
-   ```
-   python moderation_server.py
-   ```
-
-3. Start the moderation agent in another terminal:
-   ```
-   python moderation_agent.py
-   ```
-
-## Usage
-
-Once both the server and agent are running, you can interact with the agent by typing questions. The agent will:
-
-1. Send each query to the MCP server for moderation using OpenAI's moderation API
-2. If the content is flagged as inappropriate, explain which categories were flagged
-3. If the content is safe, process it with Llama 3 via Ollama and return the response
-
-To exit the application, type `exit`.
-
-## Implementation Details
-
-- `moderation_server.py`: MCP server that connects to OpenAI's moderation API
-- `moderation_agent.py`: Google ADK agent that uses MCP tools and LiteLLM with Ollama
-
-## Flow Diagram
-
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/ai-content-moderation.git
+cd ai-content-moderation
 ```
-User Query → Moderation Agent → MCP Server → OpenAI Moderation API
-                      ↓
-               Content Safe?
-                ↙     ↘
-          YES         NO
-           ↓           ↓
-        Process      Return
-        with LLM     Warning
+
+2. Create a virtual environment and activate it:
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows, use: venv\Scripts\activate
 ```
+
+3. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+4. Set your OpenAI API key:
+```bash
+export OPENAI_API_KEY="your-api-key-here"  # On Windows, use: set OPENAI_API_KEY=your-api-key-here
+```
+
+### Running the System
+
+#### SSE Transport Version
+
+1. Start the moderation server:
+```bash
+python moderation_server_sse.py
+```
+
+2. In a new terminal, start the moderation agent:
+```bash
+python moderation_agent_sse.py
+```
+
+#### STDIO Transport Version
+
+1. Run the moderation agent (it will start the server automatically):
+```bash
+python moderation_agent_stdio.py
+```
+
+### Testing
+
+Run the comprehensive test script to check all components:
+```bash
+python test_moderation_system.py
+```
+
+Or test individual components:
+
+```bash
+# Test server in standalone mode
+python moderation_server_sse.py --test
+
+# Test agent with simulated moderation (no server needed)
+python moderation_agent_sse.py --test
+
+# Test the moderation tool directly
+python moderation_agent_sse.py --test-tool "Test content to moderate"
+```
+
+## Making it Production Ready
+
+1. **Authentication**: Add proper authentication for the MCP server.
+2. **Containerization**: Package applications as Docker containers for consistent deployment.
+3. **Monitoring**: Implement health checks, metrics collection, and alerting.
+4. **Logging**: Enhance logging for better observability and troubleshooting.
+5. **Rate Limiting**: Implement rate limiting to prevent API abuse.
+6. **Caching**: Add caching for repetitive moderation requests.
+7. **Failover Mechanisms**: Implement retry logic and fallback options.
+8. **Security Hardening**: Review and address security concerns.
+
+## Deployment Options
+
+### Cloud Deployment
+
+- **AWS**: Deploy as Lambda functions or ECS containers
+- **Google Cloud**: Use Cloud Run or GKE
+- **Azure**: Deploy as Azure Functions or AKS
+
+### Self-Hosted
+
+- **Docker Compose**: For simple multi-container deployments
+- **Kubernetes**: For large-scale, resilient deployments
+- **Serverless Frameworks**: For event-driven architectures
+
+## Comparison of Transport Methods
+
+| Feature | SSE | STDIO |
+|---------|-----|-------|
+| **Setup Complexity** | Requires separate server process | Server embedded in client process |
+| **Network Requirements** | Needs HTTP connection | Works within a single host |
+| **Scalability** | Better for distributed systems | Better for single-host deployment |
+| **Debugging** | Easier to monitor network traffic | Harder to inspect communication |
+| **Resource Usage** | Higher overhead | Lower overhead |
+| **Security** | Needs network security considerations | More contained security boundary |
+
+## Follow-up Ideas
+
+1. **Support Multiple Moderation Providers**: Add support for alternative moderation APIs.
+2. **Custom Moderation Rules**: Allow configuration of custom moderation policies.
+3. **Content Categorization**: Expand beyond binary moderation to content classification.
+4. **Explanation Generation**: Provide human-readable explanations for moderation decisions.
+5. **Web UI**: Add a web interface for testing and monitoring moderation.
+6. **Feedback Loop**: Implement a system to learn from false positives/negatives.
+7. **Batch Processing**: Add support for moderating batches of content efficiently.
 
 ## License
 
-See the LICENSE file for details. 
+MIT
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## Acknowledgements
+
+- [OpenAI](https://openai.com/) for providing the moderation API
+- [Google ADK](https://github.com/google-ai/google-adk) for the agent framework
+- [MCP](https://github.com/google-ai/mcp) for the Machine Conversation Protocol implementation 
