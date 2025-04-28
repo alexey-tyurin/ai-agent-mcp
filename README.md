@@ -265,6 +265,46 @@ When choosing a deployment option, consider these factors:
 6. **Feedback Loop**: Implement a system to learn from false positives/negatives.
 7. **Batch Processing**: Add support for moderating batches of content efficiently.
 
+## Screenshots
+
+### SSE Transport Version
+
+<p>
+        <img alt="ai-agent" src="https://github.com/alexey-tyurin/ai-agent-mcp/blob/main/screenshots/sse_test.png?raw=true" width="auto" height="auto"></img> 
+</p>
+
+### STDIO Transport Version
+<p>
+        <img alt="ai-agent" src="https://github.com/alexey-tyurin/ai-agent-mcp/blob/main/screenshots/stdio_test.png?raw=true" width="auto" height="auto"></img> 
+</p>
+
+### Testing
+
+<p>
+        <img alt="ai-agent" src="https://github.com/alexey-tyurin/ai-agent-mcp/blob/main/screenshots/tests1.png?raw=true" width="auto" height="auto"></img> 
+</p>
+<p>
+        <img alt="ai-agent" src="https://github.com/alexey-tyurin/ai-agent-mcp/blob/main/screenshots/tests2.png?raw=true" width="auto" height="auto"></img> 
+</p>
+<p>
+        <img alt="ai-agent" src="https://github.com/alexey-tyurin/ai-agent-mcp/blob/main/screenshots/tests3.png?raw=true" width="auto" height="auto"></img> 
+</p>
+<p>
+        <img alt="ai-agent" src="https://github.com/alexey-tyurin/ai-agent-mcp/blob/main/screenshots/tests4.png?raw=true" width="auto" height="auto"></img> 
+</p>
+<p>
+        <img alt="ai-agent" src="https://github.com/alexey-tyurin/ai-agent-mcp/blob/main/screenshots/tests5.png?raw=true" width="auto" height="auto"></img> 
+</p>
+<p>
+        <img alt="ai-agent" src="https://github.com/alexey-tyurin/ai-agent-mcp/blob/main/screenshots/tests6.png?raw=true" width="auto" height="auto"></img> 
+</p>
+<p>
+        <img alt="ai-agent" src="https://github.com/alexey-tyurin/ai-agent-mcp/blob/main/screenshots/tests7.png?raw=true" width="auto" height="auto"></img> 
+</p>
+<p>
+        <img alt="ai-agent" src="https://github.com/alexey-tyurin/ai-agent-mcp/blob/main/screenshots/tests8.png?raw=true" width="auto" height="auto"></img> 
+</p>
+
 ## Acknowledgements
 
 - [OpenAI](https://openai.com/) for providing the moderation API
