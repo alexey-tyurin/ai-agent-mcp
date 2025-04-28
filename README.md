@@ -101,7 +101,7 @@ This project implements two variants of a content moderation flow:
 1. Clone the repository:
 ```bash
 git clone https://github.com/alexey-tyurin/ai-agent-mcp.git
-cd ai-content-moderation
+cd ai-agent-mcp
 ```
 
 2. Create a virtual environment and activate it:
