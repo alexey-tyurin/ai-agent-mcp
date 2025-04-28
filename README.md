@@ -61,15 +61,21 @@ This project implements two variants of a content moderation flow:
 ```
 ┌────────────┐    ┌──────────────┐    ┌──────────────┐    ┌─────────────┐
 │ User Query │───→│ ADK Agent    │───→│ MCP Client   │───→│ MCP Server  │
-│            │    │ (SSE Client) │    │ (Moderation) │    │ (SSE)       │
-└────────────┘    └──────────────┘    └──────────────┘    └──────┬──────┘
-                          ↑                                      │
-                          │                                      ↓
+│            │←───│ (SSE Client) │←───│ (Moderation) │←───│ (SSE)       │
+└────────────┘    └──────────────┘    └──────────────┘    └────────┬────┘
+                          ↑                                    ↑   │ 
+                          │              Moderation Response   │   ↓
                           │                              ┌─────────────┐
                           │                              │ OpenAI      │
-                          └──────────────────────────────┤ Moderation  │
-                                Response                 │ API         │
-                                                         └─────────────┘
+                          │                              │             │
+                          │                              │ API         │
+                          │                              └─────────────┘
+                          │
+                          ↓
+               ┌────────────────────┐
+               │ Llama LLM          │
+               │ (Content Response) │
+               └────────────────────┘
 ```
 
 ### STDIO Transport Architecture
@@ -77,15 +83,21 @@ This project implements two variants of a content moderation flow:
 ```
 ┌────────────┐    ┌──────────────┐    ┌──────────────┐    ┌─────────────┐
 │ User Query │───→│ ADK Agent    │───→│ MCP Client   │───→│ MCP Server  │
-│            │    │ (STDIO)      │    │ (Moderation) │    │ (STDIO)     │
-└────────────┘    └──────────────┘    └──────────────┘    └──────┬──────┘
-                          ↑                                      │
-                          │                                      ↓
+│            │←───│ (STDIO)      │←───│ (Moderation) │←───│ (STDIO)     │
+└────────────┘    └──────────────┘    └──────────────┘    └────────┬────┘
+                          ↑                                   ↑    │ 
+                          │              Moderation Response  │    ↓
                           │                              ┌─────────────┐
                           │                              │ OpenAI      │
-                          └──────────────────────────────┤ Moderation  │
-                                Response                 │ API         │
-                                                         └─────────────┘
+                          │                              │             │
+                          │                              │ API         │
+                          │                              └─────────────┘
+                          │
+                          ↓
+               ┌────────────────────┐
+               │ Llama LLM          │
+               │ (Content Response) │
+               └────────────────────┘
 ```
 
 ## Setup Instructions
