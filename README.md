@@ -1,4 +1,8 @@
-# AI Content Moderation System
+![Project Banner](https://i.imgur.com/QObdWb5.png)
+
+# AI Content Moderation System with Google AI agent and Model Context Protocol (MCP)
+
+A content moderation system that leverages OpenAI's moderation API through Google's Agent Development Kit (ADK) and Model Context Protocol (MCP).
 
 ## The Problem: When AI Conversations Go Wrong
 
@@ -36,12 +40,6 @@ This system isn't just a technical demo—it's designed for real production use 
 - **Healthcare Chatbots**: Prevent requests for harmful medical advice
 - **Social Applications**: Screen user-generated prompts in AI-powered social features
 
-One of our beta testers, a developer of an educational AI platform, shared: *"Before implementing this system, we had to manually review flagged interactions. Now, inappropriate content is caught automatically, saving us countless hours and significantly reducing our risk."*
-
-A production-ready content moderation system that leverages OpenAI's moderation API through Google's Agent Development Kit (ADK) and Machine Conversation Protocol (MCP).
-
-![Project Banner](https://i.imgur.com/QObdWb5.png)
-
 ## Business Value
 
 - **Free Content Moderation**: Utilize OpenAI's moderation API at no additional cost to filter harmful content.
@@ -51,7 +49,7 @@ A production-ready content moderation system that leverages OpenAI's moderation 
 
 ## Technical Value
 
-- **Cross-Vendor Implementation**: Practical demonstration of Google ADK agents communicating with OpenAI services.
+- **Cross-Vendor Implementation**: Practical demonstration of Google ADK agents communicating with OpenAI services via MCP and use Llama in the same flow.
 - **Dual Transport Options**: Support for both Server-Sent Events (SSE) and Standard I/O (STDIO) transports.
 - **Modular Architecture**: Easily extensible to support additional moderation providers or capabilities.
 - **Production-Ready Design**: Error handling, logging, and separation of concerns for real-world use.
@@ -64,15 +62,15 @@ This project implements two variants of a content moderation flow:
 
 ```
 ┌────────────┐    ┌──────────────┐    ┌──────────────┐    ┌─────────────┐
-│  User Query │──→│ ADK Agent    │──→│ MCP Client    │──→│ MCP Server  │
-│             │    │ (SSE Client) │    │ (Moderation) │    │ (SSE)       │
+│ User Query │───→│ ADK Agent    │───→│ MCP Client   │───→│ MCP Server  │
+│            │    │ (SSE Client) │    │ (Moderation) │    │ (SSE)       │
 └────────────┘    └──────────────┘    └──────────────┘    └──────┬──────┘
                           ↑                                      │
                           │                                      ↓
                           │                              ┌─────────────┐
                           │                              │ OpenAI      │
                           └──────────────────────────────┤ Moderation  │
-                                Response                  │ API         │
+                                Response                 │ API         │
                                                          └─────────────┘
 ```
 
@@ -80,15 +78,15 @@ This project implements two variants of a content moderation flow:
 
 ```
 ┌────────────┐    ┌──────────────┐    ┌──────────────┐    ┌─────────────┐
-│  User Query │──→│ ADK Agent    │──→│ MCP Client    │──→│ MCP Server  │
-│             │    │ (STDIO)      │    │ (Moderation) │    │ (STDIO)     │
+│ User Query │───→│ ADK Agent    │───→│ MCP Client   │───→│ MCP Server  │
+│            │    │ (STDIO)      │    │ (Moderation) │    │ (STDIO)     │
 └────────────┘    └──────────────┘    └──────────────┘    └──────┬──────┘
                           ↑                                      │
                           │                                      ↓
                           │                              ┌─────────────┐
                           │                              │ OpenAI      │
                           └──────────────────────────────┤ Moderation  │
-                                Response                  │ API         │
+                                Response                 │ API         │
                                                          └─────────────┘
 ```
 
@@ -104,7 +102,7 @@ This project implements two variants of a content moderation flow:
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/ai-content-moderation.git
+git clone https://github.com/alexey-tyurin/ai-agent-mcp.git
 cd ai-content-moderation
 ```
 
@@ -176,19 +174,77 @@ python moderation_agent_sse.py --test-tool "Test content to moderate"
 7. **Failover Mechanisms**: Implement retry logic and fallback options.
 8. **Security Hardening**: Review and address security concerns.
 
-## Deployment Options
+## Deployment Options for Model Context Protocol (MCP) Server
 
-### Cloud Deployment
+### Cloud Deployment Options
 
-- **AWS**: Deploy as Lambda functions or ECS containers
-- **Google Cloud**: Use Cloud Run or GKE
-- **Azure**: Deploy as Azure Functions or AKS
+#### 1. Containerized Services
+Containerization using Docker and Kubernetes is a popular approach for deploying MCP servers in cloud environments. This provides:
 
-### Self-Hosted
+* Scalability: Easily scale up/down based on demand
+* Portability: Deploy across different cloud providers
+* Isolation: Each MCP server runs in its own container
+* Orchestration: Kubernetes handles service discovery, load balancing, and failover
 
-- **Docker Compose**: For simple multi-container deployments
-- **Kubernetes**: For large-scale, resilient deployments
-- **Serverless Frameworks**: For event-driven architectures
+#### 2. Serverless Deployments
+Serverless options like AWS Lambda, Google Cloud Functions, or Azure Functions can be used for MCP servers that don't require persistent connections. Benefits include:
+
+* Pay-per-use pricing model
+* Automatic scaling
+* No infrastructure management
+* Ideal for event-driven MCP implementations
+
+#### 3. Cloud-Managed Hosting
+Major cloud providers offer managed services that can host MCP servers:
+
+* AWS App Runner or Elastic Beanstalk
+* Google Cloud Run
+* Azure App Service
+* Digital Ocean App Platform
+
+These services handle infrastructure scaling while you focus on the application logic.
+
+### Self-Hosted Deployment Options
+
+#### 1. On-Premises Servers
+Traditional on-premises deployment involves installing the MCP server directly on physical servers in your data center. This offers:
+
+* Complete control over hardware
+* Data residency and compliance benefits
+* No dependency on external cloud services
+* Can be optimized for specific workloads
+
+#### 2. Private Cloud
+Deploy MCP servers on private cloud infrastructure using technologies like OpenStack or VMware vSphere. This provides:
+
+* Virtualization benefits while keeping data in-house
+* Resource pooling and automated provisioning
+* Enhanced security and privacy controls
+* Better isolation than public cloud for sensitive implementations
+
+#### 3. Edge Deployment
+For latency-sensitive applications, MCP servers can be deployed at the edge, closer to where data is generated and consumed. Benefits include:
+
+* Reduced latency for real-time applications
+* Bandwidth optimization
+* Works well for distributed architectures
+* Can operate in environments with limited connectivity
+
+### Hybrid Approaches
+Many organizations opt for hybrid deployment strategies:
+
+* Primary MCP servers in the cloud with edge deployments for latency-sensitive operations
+* Critical components self-hosted with auxiliary services in the cloud
+* Development and testing in cloud, production in self-hosted environments
+
+### Implementation Considerations
+When choosing a deployment option, consider these factors:
+
+* Scalability Requirements: How many concurrent connections will your MCP server need to handle?
+* Data Privacy Concerns: Are there regulatory requirements for data handling?
+* Latency Requirements: Is real-time communication critical for your application?
+* Budget Constraints: Cloud services offer flexibility but costs can scale with usage
+* Team Expertise: Self-hosted options require more infrastructure expertise
 
 ## Comparison of Transport Methods
 
@@ -211,16 +267,18 @@ python moderation_agent_sse.py --test-tool "Test content to moderate"
 6. **Feedback Loop**: Implement a system to learn from false positives/negatives.
 7. **Batch Processing**: Add support for moderating batches of content efficiently.
 
-## License
-
-MIT
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
 ## Acknowledgements
 
 - [OpenAI](https://openai.com/) for providing the moderation API
 - [Google ADK](https://github.com/google-ai/google-adk) for the agent framework
-- [MCP](https://github.com/google-ai/mcp) for the Machine Conversation Protocol implementation 
+- [MCP](https://docs.anthropic.com/en/docs/agents-and-tools/mcp) for the Model Context Protocol
+
+## Contact Information
+
+For any questions or feedback, please contact Alexey Tyurin at altyurin3@gmail.com.
+
+## License
+
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+
+This project is licensed under the MIT License - see the [LICENSE](https://github.com/alexey-tyurin/ai-agent-mcp/blob/main/LICENSE) file for details.
