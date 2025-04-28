@@ -1,5 +1,3 @@
-![Project Banner](https://i.imgur.com/QObdWb5.png)
-
 # AI Content Moderation System with Google AI agent and Model Context Protocol (MCP)
 
 A content moderation system that leverages OpenAI's moderation API through Google's Agent Development Kit (ADK) and Model Context Protocol (MCP).
