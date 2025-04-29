@@ -320,7 +320,7 @@ When choosing a deployment option, consider these factors:
 ## Acknowledgements
 
 - [OpenAI](https://openai.com/) for providing the moderation API
-- [Google ADK](https://github.com/google-ai/google-adk) for the agent framework
+- [Google ADK](https://google.github.io/adk-docs/) for the agent framework
 - [MCP](https://docs.anthropic.com/en/docs/agents-and-tools/mcp) for the Model Context Protocol
 
 ## Contact Information
